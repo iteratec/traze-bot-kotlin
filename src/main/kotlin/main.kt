@@ -1,7 +1,13 @@
+import org.eclipse.paho.client.mqttv3.IMqttMessageListener
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
 import java.util.*
-import kotlin.math.roundToInt
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
+
+
+
 
 fun main(args: Array<String>) {
     println("Start")
@@ -14,7 +20,7 @@ fun main(args: Array<String>) {
     println("botName: " + botName + " ClientID: " + mqttClientId)
 
     //Connection to Server
-    val mqttClient: MqttClient = MqttClient(brokerUri, mqttClientId)
+    val mqttClient  = MqttClient(brokerUri, mqttClientId)
 
     val options = MqttConnectOptions()
 
@@ -24,37 +30,58 @@ fun main(args: Array<String>) {
 
     mqttClient.connect(options)
 
-    println("connected: {}" + mqttClient.isConnected)
+    println("Client Connection Status to server: " + mqttClient.isConnected)
 
-    // Start game
+    // Select a game instance
+    val GAMES_TOPIC = "traze/games"
 
-    botLogic()
+    mqttClient.setCallback(object : MqttCallback {
+        override fun connectionLost(throwable: Throwable) {
+            println("Connection to MQTT broker lost!")
+        }
 
+        @Throws(Exception::class)
+        override fun messageArrived(t: String, msg2: MqttMessage) {
+            println("Payload: \n\t" + String(msg2.getPayload()))
+        }
 
-    mqttClient.disconnect()
+        override fun deliveryComplete(t: IMqttDeliveryToken) {}
+    })
+    mqttClient.subscribe(GAMES_TOPIC)
 
-    println("Ende")
+    // Optional for suscribe
+//    mqttClient.subscribe(GAMES_TOPIC,
+//        { topic, msg ->
+//            val payload = msg.getPayload()
+//            println("Game Instance2: " + String(payload))
+//        }
+//    )
+
+    // 6Later Subscibe to grid
+
+    // 7Optional Suscribe to players
+    // 8Optional Suscribe to ticker
+
+    // 2Suscribe  player
+
+    // 3publish join game
+
+    botLogic(mqttClient)
+
+    // Leaving Game is not wanted
+//    mqttClient.disconnect()
 }
 
-fun botLogic() {
-    //publish a message
+fun botLogic(mqttClient: MqttClient) {
+    // Method for your bot Logic
+    // 4publish a message - steering
 
-    // 8 seconds
-    //while (true)
-        //keepalive
-        //move right
-        // seconds -1
-        //wait x seconds
+    val payload = String.format("N").toByteArray()
+    val msg = MqttMessage(payload)
+    msg.setQos(0)
+    msg.setRetained(true)
+    // not finished
+    mqttClient.publish("traze/{instanceName}/{playerId}/steer", msg)
 
-    //suscribe to topic (see the grid)
+    //while? keepalive?
 }
-
-//getConnection(botName, mqttClientId, "tcp://traze.iteratec.de:1883")
-//
-//fun getConnection(botName: String, mqttClientId: String, brokerUri: String) {
-//    println("fun getConnection:")
-//    println("botName: " + botName + " ClientID: " + mqttClientId)
-//
-//    val mqttClient: MqttClient
-//}
-
