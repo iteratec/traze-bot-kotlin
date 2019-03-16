@@ -1,32 +1,39 @@
 import org.eclipse.paho.client.mqttv3.*
 import org.json.JSONObject
+import java.util.*
 
 fun main(args: Array<String>) {
-    println("Start")
-    //Setup Connection
-    BrokerClient.initGame()
+    println ("Start der Anwendung")
+    val mqttClientId = UUID.randomUUID().toString()
+    val botName = "kotlin-bot-" + Math.round((Math.random() * 50) + 1)
+    val brokerUri = "tcp://traze.iteratec.de:1883"
+    val mqttClient = MqttClient(brokerUri, mqttClientId)
+    val myBroker = BrokerClient(mqttClientId, botName, mqttClient)
 
-    println("8 ende init")
-    //automatic "keepalive" Through Event from grid
-    botLogic()
+    val myGame = Game(null, null)
+    val myTraceBot = TrazeBot(null, null)
+    val myGrid = Grid()
+
+    myBroker.initGame(myBroker, myGame, myTraceBot, myGrid)
 }
 
-fun botLogic() {
-//  Function for your bot Logic
-//  exmaple for publish a message - steering
+fun botLogic(myBroker: BrokerClient, myGame: Game, myTraceBot: TrazeBot) {
+    Thread.sleep(3_000) //Optimization? better wait until objects are set up
 
-    sendSteering("N")
+    // todo implement your bot logic
+    //  exmaple for publish a message - steering
+    sendSteering("N", myBroker, myGame, myTraceBot)
 }
 
-fun sendSteering(direction: String) {
+fun sendSteering(direction: String, myBroker: BrokerClient, myGame: Game, myTraceBot: TrazeBot) {
 
     //  Input {"course":"N", "playerToken": "de37c1bc-d0e6-4c66-aaa3-911511f43d54"}
     val sterringBikeJson =
-        JSONObject("{\"course\": \"" + direction + "\", \"playerToken\": \"" + TrazeBot.botSecretUserToken + "\"}")
+        JSONObject("{\"course\": \"" + direction + "\", \"playerToken\": \"" + myTraceBot.botSecretUserToken + "\"}")
 
     val msg = MqttMessage()
     msg.payload = sterringBikeJson.toString().toByteArray()
-    println("9 steering")
-    println("publishing: ${sterringBikeJson.toString()}")
-    BrokerClient.mqttClient.publish("traze/${TrazeBot.instanceName}/${TrazeBot.botPlayerId}/steer", msg)
+//    println("publish steering: ${sterringBikeJson.toString()}")
+    myBroker.mqttClient.publish("traze/${myGame.instanceName}/${myTraceBot.botPlayerId}/steer", msg)
+    println("Richtung versendet \"Ende\"")
 }

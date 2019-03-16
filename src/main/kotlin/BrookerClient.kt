@@ -2,38 +2,41 @@ import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.json.JSONObject
-import java.util.*
-import java.util.concurrent.locks.Lock
 
-object BrokerClient {
-    val mqttClientId = UUID.randomUUID().toString()
-    val botName = "kotlin-bot-" + Math.round((Math.random() * 50) + 1)
-    val brokerUri = "tcp://traze.iteratec.de:1883"
-    var mqttClient: MqttClient = MqttClient(BrokerClient.brokerUri, BrokerClient.mqttClientId)
+class BrokerClient(
+    var mqttClientId: String,
+    val botName: String,
+    var mqttClient: MqttClient
+) {
 
-
-    fun initGame() {
+    fun initGame(myBroker: BrokerClient, myGame: Game, myTraceBot: TrazeBot, myGrid: Grid) {
         try {
-            println("botName: $botName ClientID: $mqttClientId")
-
             //Connection to the Server
             connectToServer()
 
             //Callback for the Informationsaving in Objects
-            val theCallback = SimpleMqttCallBack()
-            mqttClient.setCallback(theCallback)
+            val theCallback = SimpleMqttCallBack(myBroker, myGame, myTraceBot, myGrid)
+            this.mqttClient.setCallback(theCallback)
 
-            //Subscribe for all topics
-            subscribe()
-            // Join after Subcription, then you get the playertoken
-            joinOnGrid()
+            //Subscribe the game
+            mqttClient.subscribe("traze/games")
 
+            myBroker.joinOnGrid(myGame)
+
+            mqttClient.subscribe("traze/${myGame.instanceName}/grid")
+            mqttClient.subscribe("traze/${myGame.instanceName}/players")
+            mqttClient.subscribe("traze/${myGame.instanceName}/ticker")
+            mqttClient.subscribe("traze/${myGame.instanceName}/player/${this.mqttClientId}")
+
+            //SubscribeAndJoin-> Subscribe for all topics and Join the Game afterwards
+            //BrokerClient.Subscribe is called from Game.updateGameInstance, after the instanceName is known
+            botLogic(myBroker, myGame, myTraceBot)
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    fun connectToServer() {
+    private fun connectToServer() {
         try {
             val options = MqttConnectOptions()
             options.isCleanSession = true
@@ -48,47 +51,18 @@ object BrokerClient {
         }
     }
 
-    fun subscribe() {
+    private fun joinOnGrid(myGame: Game) {
         try {
-            mqttClient.subscribe("traze/games")
-            Thread.sleep(7_000)
-            //todo wait&signal?
-            mqttClient.subscribe("traze/${TrazeBot.instanceName}/grid")
-            mqttClient.subscribe("traze/${TrazeBot.instanceName}/players")
-            mqttClient.subscribe("traze/${TrazeBot.instanceName}/ticker")
-            mqttClient.subscribe("traze/${TrazeBot.instanceName}/player/${BrokerClient.mqttClientId}")
-            println("5 sucribe ende")
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun joinOnGrid() {
-        try {
-//              Input {"name": "myIngameNick", "mqttClientName": "myClientName"}
+//          Input {"name": "myIngameNick", "mqttClientName": "myClientName"}
             val joiningPlayer =
-                JSONObject("{\"name\": \"" + BrokerClient.botName + "\", \"mqttClientName\": \"" + BrokerClient.mqttClientId + "\"}")
+                JSONObject("{\"name\": \"" + this.botName + "\", \"mqttClientName\": \"" + this.mqttClientId + "\"}")
 
             val message = MqttMessage()
             message.payload = joiningPlayer.toString().toByteArray()
-            println("6 join")
-            println("publishing: ${joiningPlayer.toString()}")
-            mqttClient.publish("traze/${TrazeBot.instanceName}/join", message)
-            Thread.sleep(5_000)
-            //todo wait&signal?
-            println("ende join")
+//            println("publish join: ${joiningPlayer.toString()}")
+            mqttClient.publish("traze/${myGame.instanceName}/join", message)
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
-
-//    fun subcribeToPlayer() {
-//        try {
-//            println("7 subcribeplayer")
-//
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//        }
-//
-//    }
 }
