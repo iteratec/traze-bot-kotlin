@@ -1,10 +1,4 @@
 out
-.gradle
-.idea\
-encodings.xml
-gradle.xml
-misc.xml
-modules.xml
-Project.xml
-codeStyleConfig.xml
-workspace.xml
+.gradle/
+.idea/
+build/
